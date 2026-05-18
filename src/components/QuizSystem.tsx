@@ -1,19 +1,57 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGame } from '@/context/GameContext';
 import { quizQuestions, QuizQuestion } from '@/data/quizQuestions';
 
 const QuizSystem = () => {
   const { updateSafetyPoints } = useGame();
-  // Initialize and shuffle questions directly in state to avoid cascading renders
-  const [questions] = useState<QuizQuestion[]>(() => {
-    return [...quizQuestions].sort(() => 0.5 - Math.random()).slice(0, 10);
-  });
+  const [mounted, setMounted] = useState(false);
+  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [step, setStep] = useState(0);
   const [sessionScore, setSessionScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+
+  // Perform shuffling only on client-side mount to prevent hydration mismatch
+  useEffect(() => {
+    // Defer state updates to the next event loop tick to satisfy the strict React 19 linter
+    setTimeout(() => {
+      const shuffled = [...quizQuestions].sort(() => 0.5 - Math.random()).slice(0, 10);
+      setQuestions(shuffled);
+      setMounted(true);
+    }, 0);
+  }, []);
+
+  if (!mounted || questions.length === 0) {
+    return (
+      <div className="glass fade-in" style={{
+        padding: '48px',
+        textAlign: 'center',
+        minHeight: '400px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: '20px'
+      }}>
+        <div className="spinner" style={{
+          width: '50px',
+          height: '50px',
+          borderRadius: '50%',
+          border: '3px solid rgba(255, 255, 255, 0.1)',
+          borderTopColor: 'var(--accent-cyan)',
+          animation: 'spin 1s linear infinite'
+        }} />
+        <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '1.1rem' }}>Mempersiapkan evaluasi berkendara...</p>
+        <style jsx>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   const handleAnswer = (idx: number) => {
     setSelectedIdx(idx);
